@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stopwatch with Logs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #282c34;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Stopwatch container (Right side, top) */
+        .stopwatch {
+            text-align: center;
+            background: #1e1e1e;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+            width: 350px;
+            margin-left: auto;
+            margin-top: 20px;
+        }
+
+        .display {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .controls button {
+            padding: 12px 18px;
+            margin: 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        #startBtn {
+            background: #28a745;
+            color: white;
+        }
+
+        #stopBtn {
+            background: #dc3545;
+            color: white;
+        }
+
+        #resetBtn {
+            background: #ffc107;
+            color: black;
+        }
+
+        #saveBtn {
+            background: #007bff;
+            color: white;
+            display: none;
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+            transition: 0.3s;
+        }
+
+        #saveBtn:hover {
+            background: #0056b3;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+        }
+
+        .controls button:hover {
+            opacity: 0.8;
+        }
+
+        /* Timeline Box for displaying logs - Left side of the screen */
+        .timeline-box {
+            position: fixed;
+            top: 20px;
+            left: 0;
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            height: 100vh;
+            overflow-y: auto;
+            color: white;
+            font-size: 1rem;
+            box-shadow: 4px 0 10px rgba(255, 255, 255, 0.2);
+            border: 2px solid #f1c40f;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .timeline-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #f1c40f;
+        }
+
+        .timeline-entry {
+            font-size: 0.9rem;
+            background: #444;
+            padding: 5px;
+            margin: 5px 0;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        .timeline-entry:hover {
+            background: #555;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Timeline Box (for displaying logs) -->
+    <div class="timeline-box" id="timelineBox">
+        <div class="timeline-header" id="timelineHeader">
+            Spare Time Logs
+        </div>
+        <div class="timeline-content" id="timelineContent">
+            <!-- Timeline logs will appear here -->
+        </div>
+    </div>
+
+    <div class="stopwatch">
+        <h1>Stopwatch</h1>
+        <div class="display" id="display">00:00:00</div>
+        <div class="controls">
+            <button id="startBtn">Start</button>
+            <button id="stopBtn">Stop</button>
+            <button id="resetBtn">Reset</button>
+        </div>
+        <button id="saveBtn">Save</button>
+    </div>
+
+    <script>
+        let timer;
+        let isRunning = false;
+        let hours = 0, minutes = 0, seconds = 0;
+        let totalElapsedTime = 0;
+        let startTime = null;
+        let stopTime = null;
+        let currentDate = null;
+
+        // Load logs from local storage on page load
+        window.onload = function() {
+            const savedLogs = JSON.parse(localStorage.getItem('stopwatchLogs')) || [];
+            savedLogs.forEach(log => {
+                addLogToTimeline(log.date, log.time, log.elapsed);
+            });
+        };
+
+        function startTimer() {
+            if (!isRunning) {
+                isRunning = true;
+                startTime = new Date();
+                timer = setInterval(updateDisplay, 1000);
+            }
+        }
+
+        function stopTimer() {
+            if (isRunning) {
+                clearInterval(timer);
+                isRunning = false;
+                stopTime = new Date();
+                totalElapsedTime += (stopTime - startTime);
+                document.getElementById("saveBtn").style.display = "inline-block";
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            hours = 0;
+            minutes = 0;
+            seconds = 0;
+            totalElapsedTime = 0;
+            document.getElementById('display').textContent = "00:00:00";
+            document.getElementById("saveBtn").style.display = "none";
+        }
+
+        function updateDisplay() {
+            seconds++;
+            if (seconds === 60) {
+                seconds = 0;
+                minutes++;
+            }
+            if (minutes === 60) {
+                minutes = 0;
+                hours++;
+            }
+
+            let displayTime =
+                String(hours).padStart(2, '0') + ":" +
+                String(minutes).padStart(2, '0') + ":" +
+                String(seconds).padStart(2, '0');
+
+            document.getElementById('display').textContent = displayTime;
+        }
+
+        function formatDate(date) {
+            const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            let day = days[date.getDay()];
+            let formattedDate = date.toISOString().split('T')[0];
+            let time = date.toLocaleTimeString();
+            return { date: formattedDate, time: time, day: day };
+        }
+
+        function saveLog() {
+            if (stopTime && startTime) {
+                let elapsed = calculateElapsedTime(totalElapsedTime);
+                let startTimeFormatted = formatDate(startTime);
+                let stopTimeFormatted = formatDate(stopTime);
+
+                let logEntry = {
+                    date: startTimeFormatted.date,
+                    time: `Start: ${startTimeFormatted.time} - Stop: ${stopTimeFormatted.time}`,
+                    elapsed: elapsed
+                };
+
+                addLogToTimeline(startTimeFormatted.date, logEntry.time, logEntry.elapsed);
+                saveLogsToStorage(logEntry);
+                resetTimer();
+            }
+        }
+
+        function calculateElapsedTime(totalTime) {
+            let seconds = Math.floor(totalTime / 1000);
+            let minutes = Math.floor(seconds / 60);
+            let hours = Math.floor(minutes / 60);
+
+            seconds = seconds % 60;
+            minutes = minutes % 60;
+
+            return `${hours} hours ${minutes} minutes ${seconds} seconds`;
+        }
+
+        function addLogToTimeline(date, time, elapsed) {
+            const timelineContent = document.getElementById('timelineContent');
+            let logHtml = `
+                <div class="timeline-entry" ondblclick="deleteLog(this)">
+                    <strong>${date}</strong><br>
+                    ${time}<br>
+                    <strong>Total Time: ${elapsed}</strong>
+                </div>
+            `;
+            timelineContent.innerHTML += logHtml;
+        }
+
+        function deleteLog(logEntry) {
+            logEntry.remove();
+            saveLogsToStorage();
+        }
+
+        function saveLogsToStorage(newLog) {
+            const savedLogs = JSON.parse(localStorage.getItem('stopwatchLogs')) || [];
+            if (newLog) {
+                savedLogs.push(newLog);
+            }
+            localStorage.setItem('stopwatchLogs', JSON.stringify(savedLogs));
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startTimer);
+        document.getElementById('stopBtn').addEventListener('click', stopTimer);
+        document.getElementById('resetBtn').addEventListener('click', resetTimer);
+        document.getElementById('saveBtn').addEventListener('click', saveLog);
+
+    </script>
+</body>
+</html>
